@@ -1,9 +1,10 @@
-import { Component } from '@angular/core';
-import { GooglePhotosGallery } from '../../components/google-photos-gallery/google-photos-gallery';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { Gallery } from '../../components/gallery/gallery';
 
 @Component({
   selector: 'app-link-tree',
-  imports: [GooglePhotosGallery],
+  imports: [Gallery],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './link-tree.html',
   styleUrl: './link-tree.css',
 })

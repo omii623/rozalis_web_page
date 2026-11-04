@@ -1,59 +1,38 @@
-# LinkTree
+# ROZALIS – link-tree oldal
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.22.
+Egyoldalas „linkfa” a ROZALIS ékszermárkának: borítókép, logó, Instagram / Facebook / Etsy linkek és egy képgaléria.
+Angular 21, standalone komponensek, Vitest.
 
-## Development server
-
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+## Fejlesztés
 
 ```bash
-ng generate component component-name
+npm install
+npm start          # http://localhost:4200
+npm test           # unit tesztek (Vitest)
+npm run build      # éles build → dist/link-tree/browser
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Galéria – Google Drive szinkron
 
-```bash
-ng generate --help
+A galéria képei egy **nyilvános** Google Drive mappából jönnek
+(„Bárki, aki rendelkezik a linkkel”). Új kép felvétele: töltsd fel a mappába.
+
+- A sorrend a **fájlnév** szerinti (pl. `01_nyaklanc.jpg`, `02_fulbevalo.jpg`).
+- `npm run sync-photos` letölti a képeket, 1200 px szélesre méretezi és WebP-be konvertálja
+  (`public/images/photoN.webp`), majd újragenerálja a `src/app/components/gallery/gallery-images.ts` fájlt.
+- Másik mappa: `DRIVE_FOLDER_ID=<id> npm run sync-photos`.
+
+A `.github/workflows/sync-photos.yml` (a repó gyökerében) naponta 6:00 UTC-kor lefuttatja a szinkront,
+és változás esetén PR-t nyit az `auto-sync/photos` branchről. Kézzel is indítható az Actions fülön.
+Ehhez a repóban engedélyezni kell: *Settings → Actions → General → Allow GitHub Actions to create and approve pull requests*.
+
+## Szerkezet
+
 ```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
+src/app/
+  pages/link-tree/       főoldal (borító, logó, linkek)
+  pages/not-found/       404
+  components/gallery/    galéria + lightbox (Esc, ←/→ billentyűk)
+    gallery-images.ts    ⚠️ generált fájl – ne szerkeszd kézzel
+scripts/sync-photos.js   Drive → public/images szinkron
 ```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.

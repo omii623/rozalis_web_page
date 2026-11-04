@@ -2,7 +2,6 @@
   display: block;
   min-height: 100vh;
   background-color: #1a1a1a;
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 /* ===== Cover ===== */
@@ -29,6 +28,11 @@
   z-index: 1;
   border-radius: 16px;
   text-align: center;
+}
+
+.brand-card h1 {
+  margin: 0;
+  line-height: 0;
 }
 
 .brand-logo {
@@ -66,6 +70,11 @@
   white-space: nowrap;
 }
 
+.social-btn:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
 .social-btn:hover {
   background: #f5f5f5;
   border-color: #ccc;
@@ -87,7 +96,7 @@
   color: #F56400;
 }
 
-/* ===== Responsive: Small (< 400px) ===== */
+/* ===== Responsive: Small (≤ 550px) ===== */
 @media screen and (max-width: 550px) {
   .social-links {
     flex-direction: column;
@@ -101,7 +110,7 @@
 }
 
 /* ===== Gallery ===== */
-app-google-photos-gallery {
+app-gallery {
   display: block;
   padding: 0 16px 48px;
 }
@@ -114,7 +123,7 @@ app-google-photos-gallery {
 
   .brand-card {
     max-width: 600px;
-    margin: -260px auto 0;
+    margin: -80px auto 0;
     padding: 24px 40px 20px;
     border-radius: 16px;
   }
@@ -135,7 +144,7 @@ app-google-photos-gallery {
     max-width: 180px;
   }
 
-  app-google-photos-gallery {
+  app-gallery {
     max-width: 700px;
     margin: 0 auto;
     padding: 0 24px 64px;
@@ -173,7 +182,7 @@ app-google-photos-gallery {
     max-width: 200px;
   }
 
-  app-google-photos-gallery {
+  app-gallery {
     max-width: 900px;
     padding: 0 32px 80px;
   }
