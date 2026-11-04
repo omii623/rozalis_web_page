@@ -6,7 +6,8 @@ export interface GalleryManifest {
   images: string[];
 }
 
-export const GALLERY_MANIFEST_URL = '/images/gallery.json';
+// Relatív útvonal: a <base href>-hez képest töltődik (pl. GitHub Pages almappa)
+export const GALLERY_MANIFEST_URL = 'images/gallery.json';
 
 @Component({
   selector: 'app-gallery',

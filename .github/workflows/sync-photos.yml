@@ -90,8 +90,16 @@ jobs:
 
       - name: Build site
         if: steps.mode.outputs.mode == 'full'
+        env:
+          # GitHub Pages projekt-oldal: https://<user>.github.io/<repo>/ → base href = /<repo>/
+          # Saját domainnél állítsd a BASE_HREF repó változót "/"-re.
+          BASE_HREF: ${{ vars.BASE_HREF || format('/{0}/', github.event.repository.name) }}
         run: |
-          npx ng build
+          echo "🔗 base href: $BASE_HREF"
+          npx ng build --base-href "$BASE_HREF"
+          # SPA: ismeretlen útvonalon (pl. /link-tree) is az Angular app töltődjön be
+          cp "$BUILD_DIR/index.html" "$BUILD_DIR/404.html"
+          touch "$BUILD_DIR/.nojekyll"
           # A branch tartalmát a friss buildre cseréljük (.git marad)
           find "$SITE_DIR" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
           cp -r "$BUILD_DIR"/. "$SITE_DIR"/

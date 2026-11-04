@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Gallery, GALLERY_MANIFEST_URL } from './gallery';
 
-const IMAGES = ['/images/photo-a.webp', '/images/photo-b.webp', '/images/photo-c.webp'];
+const IMAGES = ['images/photo-a.webp', 'images/photo-b.webp', 'images/photo-c.webp'];
 
 describe('Gallery', () => {
   let fixture: ComponentFixture<Gallery>;
