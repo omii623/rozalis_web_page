@@ -1,16 +1,23 @@
 .gallery {
+  list-style: none;
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr;
   gap: 12px;
-  align-items: start;
+  max-width: 400px;
+  margin: 0 auto;
 }
 
 .gallery-item {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  border: none;
+  background: #2a2a2a;
   border-radius: 12px;
   overflow: hidden;
-  cursor: pointer;
+  cursor: zoom-in;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  aspect-ratio: 1;
 }
 
 .gallery-item img {
@@ -25,42 +32,41 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
-/* Második oszlop lejjebb csúsztatása — csak 2 oszlopos módban */
-@media screen and (min-width: 551px) {
-  .gallery-item:nth-child(even) {
-    transform: translateY(40px);
-  }
-
-  .gallery-item:nth-child(even):hover {
-    transform: translateY(40px) scale(1.02);
-  }
+.gallery-item:focus-visible,
+.lb-btn:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
 }
 
-/* Páratlan számú utolsó kép legyen az első oszlopban */
-.gallery-item:nth-last-child(1):nth-child(odd) {
-  grid-column: 1;
+/* Két oszlop, a második lejjebb csúsztatva */
+@media screen and (min-width: 551px) {
+  .gallery {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: none;
+    padding-bottom: 40px; /* hely a lecsúsztatott oszlopnak */
+  }
+
+  .gallery li:nth-child(even) {
+    transform: translateY(40px);
+  }
 }
 
 .empty-message {
   text-align: center;
   color: #888;
   padding: 32px;
-  font-family: "Inter", sans-serif;
 }
 
-/* Lightbox */
+/* ===== Lightbox ===== */
 .lightbox {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: rgba(0, 0, 0, 0.9);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  cursor: pointer;
+  cursor: zoom-out;
 }
 
 .lightbox img {
@@ -68,20 +74,18 @@
   max-height: 90%;
   border-radius: 8px;
   object-fit: contain;
+  cursor: default;
 }
 
-.close-btn {
+.lb-btn {
   position: absolute;
-  top: 20px;
-  right: 20px;
   background: rgba(255, 255, 255, 0.2);
   border: none;
-  color: white;
-  font-size: 1.5rem;
+  color: #fff;
   cursor: pointer;
   line-height: 1;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -89,22 +93,32 @@
   transition: background 0.2s ease;
 }
 
-.close-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
+.lb-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
 }
 
-/* ===== Responsive: Small (< 550px) ===== */
-@media screen and (max-width: 550px) {
-  .gallery {
-    grid-template-columns: 1fr;
-    max-width: 400px;
-    margin: 0 auto;
-  }
-
-
+.close-btn {
+  top: 20px;
+  right: 20px;
+  font-size: 1.4rem;
 }
 
-/* ===== Responsive: Tablet ===== */
+.nav-btn {
+  top: 50%;
+  translate: 0 -50%;
+  font-size: 2rem;
+  padding-bottom: 4px;
+}
+
+.nav-btn.prev {
+  left: 16px;
+}
+
+.nav-btn.next {
+  right: 16px;
+}
+
+/* ===== Tablet ===== */
 @media screen and (min-width: 800px) {
   .gallery {
     gap: 16px;
@@ -115,7 +129,7 @@
   }
 }
 
-/* ===== Responsive: Desktop ===== */
+/* ===== Desktop ===== */
 @media screen and (min-width: 1280px) {
   .gallery {
     gap: 20px;
@@ -123,5 +137,15 @@
 
   .gallery-item {
     border-radius: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery-item {
+    transition: none;
+  }
+
+  .gallery-item:hover {
+    transform: none;
   }
 }

@@ -1,4 +1,4 @@
-name: Sync Google Photos Album
+name: Sync Google Drive gallery
 
 on:
   # Automatikus futtatás naponta 6:00-kor (UTC)
@@ -13,6 +13,14 @@ concurrency:
   group: sync-photos
   cancel-in-progress: true
 
+# Push a sync branchre + PR nyitása
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  BRANCH: auto-sync/photos
+
 jobs:
   sync:
     runs-on: ubuntu-latest
@@ -20,45 +28,52 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Az összes branch lekérése
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
 
-      - name: Sync photos from Google Photos
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync photos from Google Drive
+        env:
+          DRIVE_FOLDER_ID: ${{ vars.DRIVE_FOLDER_ID }}  # opcionális felülírás
         run: node scripts/sync-photos.js
 
       - name: Check for changes
         id: changes
         run: |
-          git add public/images/ src/app/components/google-photos-gallery/google-photos-gallery.ts
+          git add public/images/ src/app/components/gallery/gallery-images.ts
           if git diff --cached --quiet; then
-            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "✅ Nincs új kép."
           else
-            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "🆕 Új képek találva!"
           fi
 
-      - name: Create or update sync branch and commit
+      - name: Commit and push to sync branch
         if: steps.changes.outputs.changed == 'true'
         run: |
-          BRANCH="auto-sync/photos"
-
-          # Branch váltás vagy létrehozás
           git checkout -B "$BRANCH"
-
-          # Commit
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "📸 Auto-sync: Google Photos album frissítve
-
-          $(date +'%Y-%m-%d %H:%M UTC')"
-
-          # Push (force push a branchre)
+          git commit -m "📸 Auto-sync: Drive galéria frissítve ($(date -u +'%Y-%m-%d %H:%M UTC'))"
           git push -f origin "$BRANCH"
 
-          echo "✅ Változások push-olva a(z) $BRANCH branchre."
+      - name: Open pull request (if not already open)
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+            gh pr create --head "$BRANCH" --base "${{ github.event.repository.default_branch }}" \
+              --title "📸 Auto-sync: Drive galéria frissítve" \
+              --body "Automatikusan generált PR a Google Drive galéria-mappa szinkronizálásából. Ellenőrizd a képeket, majd merge-öld."
+          else
+            echo "ℹ️ Már van nyitott PR, a branch frissítve."
+          fi
