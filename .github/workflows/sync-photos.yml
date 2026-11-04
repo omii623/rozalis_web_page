@@ -1,0 +1,64 @@
+name: Sync Google Photos Album
+
+on:
+  # Automatikus futtatás naponta 6:00-kor (UTC)
+  schedule:
+    - cron: '0 6 * * *'
+
+  # Manuális indítás a GitHub Actions fülön
+  workflow_dispatch:
+
+# Csak egy instance futhat egyszerre
+concurrency:
+  group: sync-photos
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Az összes branch lekérése
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Sync photos from Google Photos
+        run: node scripts/sync-photos.js
+
+      - name: Check for changes
+        id: changes
+        run: |
+          git add public/images/ src/app/components/google-photos-gallery/google-photos-gallery.ts
+          if git diff --cached --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "✅ Nincs új kép."
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "🆕 Új képek találva!"
+          fi
+
+      - name: Create or update sync branch and commit
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          BRANCH="auto-sync/photos"
+
+          # Branch váltás vagy létrehozás
+          git checkout -B "$BRANCH"
+
+          # Commit
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "📸 Auto-sync: Google Photos album frissítve
+
+          $(date +'%Y-%m-%d %H:%M UTC')"
+
+          # Push (force push a branchre)
+          git push -f origin "$BRANCH"
+
+          echo "✅ Változások push-olva a(z) $BRANCH branchre."
