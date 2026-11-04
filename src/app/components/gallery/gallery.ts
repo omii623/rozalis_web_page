@@ -1,5 +1,12 @@
 import { ChangeDetectionStrategy, Component, HostListener, signal } from '@angular/core';
-import { GALLERY_IMAGES } from './gallery-images';
+
+/** A sync-photos.js által generált lista (public/images/gallery.json). */
+export interface GalleryManifest {
+  fingerprint?: string;
+  images: string[];
+}
+
+export const GALLERY_MANIFEST_URL = '/images/gallery.json';
 
 @Component({
   selector: 'app-gallery',
@@ -8,8 +15,18 @@ import { GALLERY_IMAGES } from './gallery-images';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Gallery {
-  protected readonly images = GALLERY_IMAGES;
+  protected readonly images = signal<readonly string[]>([]);
+  protected readonly loaded = signal(false);
   protected readonly selectedIndex = signal<number | null>(null);
+
+  constructor() {
+    // Futásidőben töltjük be, így a buildelt oldalon újrafordítás nélkül cserélhetők a képek.
+    fetch(GALLERY_MANIFEST_URL, { cache: 'no-cache' })
+      .then((res) => (res.ok ? (res.json() as Promise<GalleryManifest>) : { images: [] }))
+      .then((manifest) => this.images.set(manifest.images ?? []))
+      .catch(() => this.images.set([]))
+      .finally(() => this.loaded.set(true));
+  }
 
   open(index: number) {
     this.selectedIndex.set(index);
@@ -21,8 +38,8 @@ export class Gallery {
 
   step(delta: number) {
     const i = this.selectedIndex();
-    if (i === null) return;
-    const n = this.images.length;
+    const n = this.images().length;
+    if (i === null || n === 0) return;
     this.selectedIndex.set((i + delta + n) % n);
   }
 

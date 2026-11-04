@@ -1,6 +1,7 @@
-@if (images.length > 0) {
+@let list = images();
+@if (list.length > 0) {
   <ul class="gallery" aria-label="Galéria">
-    @for (image of images; track image; let i = $index) {
+    @for (image of list; track image; let i = $index) {
       <li>
         <button type="button" class="gallery-item" (click)="open(i)" [attr.aria-label]="'Kép megnyitása: ' + (i + 1) + '. ROZALIS ékszer'">
           <img [src]="image" [alt]="'ROZALIS ékszer – ' + (i + 1) + '. kép'" loading="lazy" decoding="async" />
@@ -8,17 +9,17 @@
       </li>
     }
   </ul>
-} @else {
+} @else if (loaded()) {
   <p class="empty-message">Még nincsenek képek.</p>
 }
 
 @let current = selectedIndex();
 @if (current !== null) {
   <div class="lightbox" role="dialog" aria-modal="true" aria-label="Nagyított kép" (click)="close()">
-    <img [src]="images[current]" [alt]="'ROZALIS ékszer – ' + (current + 1) + '. kép'" (click)="$event.stopPropagation()" />
+    <img [src]="list[current]" [alt]="'ROZALIS ékszer – ' + (current + 1) + '. kép'" (click)="$event.stopPropagation()" />
 
     <button type="button" class="lb-btn close-btn" aria-label="Bezárás" (click)="close()">✕</button>
-    @if (images.length > 1) {
+    @if (list.length > 1) {
       <button type="button" class="lb-btn nav-btn prev" aria-label="Előző kép" (click)="step(-1); $event.stopPropagation()">‹</button>
       <button type="button" class="lb-btn nav-btn next" aria-label="Következő kép" (click)="step(1); $event.stopPropagation()">›</button>
     }

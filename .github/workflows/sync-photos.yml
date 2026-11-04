@@ -1,79 +1,119 @@
-name: Sync Google Drive gallery
+name: Build site & sync Google Drive gallery
 
+# Az auto-sync/photos branch CSAK a kész, buildelt oldalt tartalmazza (a dist tartalmát a gyökérben).
+#
+#  • push a masterre            → teljes build + friss képek a Drive-ról
+#  • napi időzítés / kézi indítás → csak a képek (images/photo-*.webp + images/gallery.json) cserélődnek,
+#                                   és csak akkor, ha a Drive mappa változott
 on:
-  # Automatikus futtatás naponta 6:00-kor (UTC)
+  push:
+    branches: [master]
+
+  # Napi ellenőrzés 6:00-kor (UTC)
   schedule:
     - cron: '0 6 * * *'
 
   # Manuális indítás a GitHub Actions fülön
   workflow_dispatch:
+    inputs:
+      force:
+        description: 'Képek frissítése akkor is, ha a Drive mappa nem változott'
+        type: boolean
+        default: false
+      rebuild:
+        description: 'Teljes újrabuildelés (kód + képek)'
+        type: boolean
+        default: false
 
-# Csak egy instance futhat egyszerre
+# Egyszerre csak egy futás írhatja a branchet (a futó nem szakad meg)
 concurrency:
-  group: sync-photos
-  cancel-in-progress: true
+  group: site-branch
+  cancel-in-progress: false
 
-# Push a sync branchre + PR nyitása
 permissions:
   contents: write
-  pull-requests: write
 
 env:
   BRANCH: auto-sync/photos
+  BUILD_DIR: dist/link-tree/browser
+  SITE_DIR: site
+  DRIVE_FOLDER_ID: ${{ vars.DRIVE_FOLDER_ID }}  # opcionális felülírás
 
 jobs:
-  sync:
+  site:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout master
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-          cache-dependency-path: package-lock.json
+
+      - name: Open site branch
+        id: site
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          if git fetch --depth=1 origin "$BRANCH" 2>/dev/null; then
+            git worktree add -B "$BRANCH" "$SITE_DIR" FETCH_HEAD
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ℹ️ Még nincs $BRANCH branch — teljes build következik."
+            git worktree add --orphan -b "$BRANCH" "$SITE_DIR"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Decide what to do
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.rebuild }}" = "true" ] \
+             || [ "${{ steps.site.outputs.exists }}" != "true" ]; then
+            echo "mode=full" >> "$GITHUB_OUTPUT"; echo "🏗️ Teljes build."
+          elif [ "${{ inputs.force }}" = "true" ]; then
+            echo "mode=photos" >> "$GITHUB_OUTPUT"; echo "📸 Kényszerített képfrissítés."
+          else
+            # Gyors ellenőrzés (pár másodperc, függőségek nélkül)
+            node scripts/sync-photos.js --check --out "$SITE_DIR/images" | tee /tmp/check.log
+            if grep -q 'changed=true' /tmp/check.log; then
+              echo "mode=photos" >> "$GITHUB_OUTPUT"
+            else
+              echo "mode=none" >> "$GITHUB_OUTPUT"
+            fi
+          fi
 
       - name: Install dependencies
+        if: steps.mode.outputs.mode != 'none'
         run: npm ci
 
-      - name: Sync photos from Google Drive
-        env:
-          DRIVE_FOLDER_ID: ${{ vars.DRIVE_FOLDER_ID }}  # opcionális felülírás
-        run: node scripts/sync-photos.js
-
-      - name: Check for changes
-        id: changes
+      - name: Build site
+        if: steps.mode.outputs.mode == 'full'
         run: |
-          git add public/images/ src/app/components/gallery/gallery-images.ts
+          npx ng build
+          # A branch tartalmát a friss buildre cseréljük (.git marad)
+          find "$SITE_DIR" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -r "$BUILD_DIR"/. "$SITE_DIR"/
+
+      - name: Sync photos from Google Drive into site
+        if: steps.mode.outputs.mode != 'none'
+        run: node scripts/sync-photos.js --out "$SITE_DIR/images"
+
+      - name: Commit and push site branch
+        if: steps.mode.outputs.mode != 'none'
+        working-directory: ${{ env.SITE_DIR }}
+        run: |
+          git add -A
           if git diff --cached --quiet; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            echo "✅ Nincs új kép."
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "🆕 Új képek találva!"
+            echo "✅ Nincs változás a branchen."
+            exit 0
           fi
-
-      - name: Commit and push to sync branch
-        if: steps.changes.outputs.changed == 'true'
-        run: |
-          git checkout -B "$BRANCH"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "📸 Auto-sync: Drive galéria frissítve ($(date -u +'%Y-%m-%d %H:%M UTC'))"
-          git push -f origin "$BRANCH"
-
-      - name: Open pull request (if not already open)
-        if: steps.changes.outputs.changed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
-            gh pr create --head "$BRANCH" --base "${{ github.event.repository.default_branch }}" \
-              --title "📸 Auto-sync: Drive galéria frissítve" \
-              --body "Automatikusan generált PR a Google Drive galéria-mappa szinkronizálásából. Ellenőrizd a képeket, majd merge-öld."
+          if [ "${{ steps.mode.outputs.mode }}" = "full" ]; then
+            MSG="🏗️ Build: ${GITHUB_SHA::7} + Drive képek"
           else
-            echo "ℹ️ Már van nyitott PR, a branch frissítve."
+            MSG="📸 Drive képek frissítve"
           fi
+          git commit -q -m "$MSG ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+          git push origin "$BRANCH"
+          git show --stat --format='%s' HEAD | tail -n +1
