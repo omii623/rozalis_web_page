@@ -5,6 +5,7 @@ name: Build site & sync Google Drive gallery
 #  • push a masterre            → teljes build + friss képek a Drive-ról
 #  • napi időzítés / kézi indítás → csak a képek (images/photo-*.webp + images/gallery.json) cserélődnek,
 #                                   és csak akkor, ha a Drive mappa változott
+# A branch mindig egyetlen commitból áll (force push), így nem nő a mérete.
 on:
   push:
     branches: [master]
@@ -108,20 +109,23 @@ jobs:
         if: steps.mode.outputs.mode != 'none'
         run: node scripts/sync-photos.js --out "$SITE_DIR/images"
 
-      - name: Commit and push site branch
+      # A branch mindig EGYETLEN, előzmények nélküli commit: a régi (hash-elt nevű) képek és
+      # build fájlok így a historyban sem halmozódnak fel. Force push cseréli le.
+      - name: Publish site branch (single commit)
         if: steps.mode.outputs.mode != 'none'
         working-directory: ${{ env.SITE_DIR }}
         run: |
           git add -A
-          if git diff --cached --quiet; then
+          if [ "${{ steps.site.outputs.exists }}" = "true" ] && git diff --cached --quiet; then
             echo "✅ Nincs változás a branchen."
             exit 0
           fi
+          git diff --cached --stat || true
           if [ "${{ steps.mode.outputs.mode }}" = "full" ]; then
             MSG="🏗️ Build: ${GITHUB_SHA::7} + Drive képek"
           else
             MSG="📸 Drive képek frissítve"
           fi
-          git commit -q -m "$MSG ($(date -u +'%Y-%m-%d %H:%M UTC'))"
-          git push origin "$BRANCH"
-          git show --stat --format='%s' HEAD | tail -n +1
+          COMMIT=$(git commit-tree "$(git write-tree)" -m "$MSG ($(date -u +'%Y-%m-%d %H:%M UTC'))")
+          git push -f origin "$COMMIT:refs/heads/$BRANCH"
+          echo "✅ $BRANCH = $(git rev-parse --short "$COMMIT") (1 commit, előzmények nélkül)"
