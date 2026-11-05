@@ -58,9 +58,16 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          if git fetch --depth=1 origin "$BRANCH" 2>/dev/null; then
+          # depth=2: így látszik, hogy a branch már egyetlen commit-e
+          if git fetch --depth=2 origin "$BRANCH" 2>/dev/null; then
             git worktree add -B "$BRANCH" "$SITE_DIR" FETCH_HEAD
             echo "exists=true" >> "$GITHUB_OUTPUT"
+            if [ "$(git rev-list --count FETCH_HEAD)" = "1" ]; then
+              echo "single=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "ℹ️ A $BRANCH branch több commitból áll — össze lesz vonva."
+              echo "single=false" >> "$GITHUB_OUTPUT"
+            fi
           else
             echo "ℹ️ Még nincs $BRANCH branch — teljes build következik."
             git worktree add --orphan -b "$BRANCH" "$SITE_DIR"
@@ -116,7 +123,7 @@ jobs:
         working-directory: ${{ env.SITE_DIR }}
         run: |
           git add -A
-          if [ "${{ steps.site.outputs.exists }}" = "true" ] && git diff --cached --quiet; then
+          if [ "${{ steps.site.outputs.single }}" = "true" ] && git diff --cached --quiet; then
             echo "✅ Nincs változás a branchen."
             exit 0
           fi
